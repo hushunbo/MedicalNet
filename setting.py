@@ -4,6 +4,9 @@ Written by Whalechen
 '''
 
 import argparse
+import datetime
+import sys
+import os
 
 def parse_opts():
     parser = argparse.ArgumentParser()
@@ -13,13 +16,18 @@ def parse_opts():
         type=str,
         help='Root directory path of data')
     parser.add_argument(
-        '--img_list',
+        '--train_list',
         default='./data/train.txt',
         type=str,
-        help='Path for image list file')
+        help='Path for training image list file')
+    parser.add_argument(
+        '--val_list',
+        default='./data/val.txt',
+        type=str,
+        help='Path for validation image list file')
     parser.add_argument(
         '--n_seg_classes',
-        default=2,
+        default=3,
         type=int,
         help="Number of segmentation classes"
     )
@@ -35,7 +43,7 @@ def parse_opts():
         type=int,
         help='Number of jobs')
     parser.add_argument(
-        '--batch_size', default=1, type=int, help='Batch Size')
+        '--batch_size', default=4, type=int, help='Batch Size')
     parser.add_argument(
         '--phase', default='train', type=str, help='Phase of train or test')
     parser.add_argument(
@@ -45,22 +53,22 @@ def parse_opts():
         help='Interation for saving model')
     parser.add_argument(
         '--n_epochs',
-        default=200,
+        default=1000,
         type=int,
         help='Number of total epochs to run')
     parser.add_argument(
         '--input_D',
-    default=56,
+        default=128,
         type=int,
         help='Input size of depth')
     parser.add_argument(
         '--input_H',
-        default=448,
+        default=128,
         type=int,
         help='Input size of height')
     parser.add_argument(
         '--input_W',
-        default=448,
+        default=128,
         type=int,
         help='Input size of width')
     parser.add_argument(
@@ -72,7 +80,7 @@ def parse_opts():
     )
     parser.add_argument(
         '--pretrain_path',
-        default='pretrain/resnet_50.pth',
+        default='pretrain/resnet_50_23dataset.pth',
         type=str,
         help=
         'Path for pretrained model.'
@@ -111,6 +119,20 @@ def parse_opts():
     parser.add_argument(
         '--ci_test', action='store_true', help='If true, ci testing is used.')
     args = parser.parse_args()
-    args.save_folder = "./trails/models/{}_{}".format(args.model, args.model_depth)
-    
+
+    now = datetime.datetime.now()
+    # distinct time stamp for each model
+    time = "{:04d}{:02d}{:02d}-{:02d}{:02d}{:02d}".format(now.year,
+                                                          now.month,
+                                                          now.day,
+                                                          now.hour,
+                                                          now.minute,
+                                                          now.second)
+
+    args.save_folder = "./trails/models/{}_{}_{}".format(args.model, args.model_depth, time)
+    args.log_folder = "./trails/logs/{}_{}_{}".format(args.model, args.model_depth, time)
+
+    os.system('mkdir {}'.format(args.save_folder))
+    os.system('cp {} {}'.format(args.train_list, args.save_folder))
+    os.system('cp {} {}'.format(args.val_list, args.save_folder))
     return args

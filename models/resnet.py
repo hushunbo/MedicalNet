@@ -81,7 +81,7 @@ class Bottleneck(nn.Module):
         self.bn2 = nn.BatchNorm3d(planes)
         self.conv3 = nn.Conv3d(planes, planes * 4, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm3d(planes * 4)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.LeakyReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
         self.dilation = dilation
@@ -132,7 +132,7 @@ class ResNet(nn.Module):
             bias=False)
             
         self.bn1 = nn.BatchNorm3d(64)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.LeakyReLU(inplace=True)
         self.maxpool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0], shortcut_type)
         self.layer2 = self._make_layer(
@@ -143,34 +143,55 @@ class ResNet(nn.Module):
             block, 512, layers[3], shortcut_type, stride=1, dilation=4)
 
         self.conv_seg = nn.Sequential(
-                                        nn.ConvTranspose3d(
-                                        512 * block.expansion,
-                                        32,
-                                        2,
-                                        stride=2
-                                        ),
-                                        nn.BatchNorm3d(32),
-                                        nn.ReLU(inplace=True),
-                                        nn.Conv3d(
-                                        32,
-                                        32,
-                                        kernel_size=3,
-                                        stride=(1, 1, 1),
-                                        padding=(1, 1, 1),
-                                        bias=False), 
-                                        nn.BatchNorm3d(32),
-                                        nn.ReLU(inplace=True),
-                                        nn.Conv3d(
-                                        32,
-                                        num_seg_classes,
-                                        kernel_size=1,
-                                        stride=(1, 1, 1),
-                                        bias=False) 
-                                        )
+            nn.ConvTranspose3d(
+                512 * block.expansion,
+                32,
+                2,
+                stride=2
+            ),
+            nn.BatchNorm3d(32),
+            nn.LeakyReLU(inplace=True),
+            nn.Conv3d(
+                32,
+                32,
+                kernel_size=3,
+                stride=(1, 1, 1),
+                padding=(1, 1, 1),
+                bias=False),
+            nn.BatchNorm3d(32),
+            nn.LeakyReLU(inplace=True),
+            nn.Conv3d(
+                32,
+                num_seg_classes,
+                kernel_size=1,
+                stride=(1, 1, 1),
+                bias=False)
+        )
+        # self.conv_seg = nn.Sequential(
+        #     nn.ConvTranspose3d(512 * block.expansion, 128, 2, stride=2),
+        #     nn.BatchNorm3d(128),
+        #     nn.LeakyReLU(inplace=True),
+        #     nn.Conv3d(128, 128, kernel_size=3, stride=(1, 1, 1), padding=(1, 1, 1), bias=False),
+        #     nn.BatchNorm3d(128),
+        #     nn.LeakyReLU(inplace=True),
+        #     nn.ConvTranspose3d(128, 64, 2, stride=2),
+        #     nn.BatchNorm3d(64),
+        #     nn.LeakyReLU(inplace=True),
+        #     nn.Conv3d(64, 64, kernel_size=3, stride=(1, 1, 1), padding=(1, 1, 1), bias=False),
+        #     nn.BatchNorm3d(64),
+        #     nn.LeakyReLU(inplace=True),
+        #     nn.ConvTranspose3d(64, 32, 2, stride=2),
+        #     nn.BatchNorm3d(32),
+        #     nn.LeakyReLU(inplace=True),
+        #     nn.Conv3d(32, 32, kernel_size=3, stride=(1, 1, 1), padding=(1, 1, 1), bias=False),
+        #     nn.BatchNorm3d(32),
+        #     nn.LeakyReLU(inplace=True),
+        #     nn.Conv3d(32, num_seg_classes, kernel_size=1, stride=(1, 1, 1), bias=False)
+        # )
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
-                m.weight = nn.init.kaiming_normal(m.weight, mode='fan_out')
+                m.weight = nn.init.kaiming_normal_(m.weight, mode='fan_out')
             elif isinstance(m, nn.BatchNorm3d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
@@ -211,7 +232,6 @@ class ResNet(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
         x = self.conv_seg(x)
-
         return x
 
 def resnet10(**kwargs):
