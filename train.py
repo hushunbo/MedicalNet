@@ -168,7 +168,7 @@ def train(train_dataloader, validate_dataloader, model, optimizer, scheduler, to
 if __name__ == '__main__':
     # settting
     sets = parse_opts()
-    os.system('mkdir {}'.format(sets.save_folder))
+    os.system('mkdir -p {}'.format(sets.save_folder))
     os.system('cp {} {}'.format(sets.train_list, sets.save_folder))
     os.system('cp {} {}'.format(sets.val_list, sets.save_folder))
     if sets.ci_test:
