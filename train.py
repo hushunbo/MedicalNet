@@ -167,7 +167,10 @@ def train(train_dataloader, validate_dataloader, model, optimizer, scheduler, to
 
 if __name__ == '__main__':
     # settting
-    sets = parse_opts()   
+    sets = parse_opts()
+    os.system('mkdir {}'.format(sets.save_folder))
+    os.system('cp {} {}'.format(sets.train_list, sets.save_folder))
+    os.system('cp {} {}'.format(sets.val_list, sets.save_folder))
     if sets.ci_test:
         sets.img_list = './toy_data/test_ci.txt' 
         sets.n_epochs = 1
@@ -213,7 +216,11 @@ if __name__ == '__main__':
         sets.pin_memory = True    
 
     training_dataset = CbctOnTheFlyDataset(sets.train_list, sets)
+
+    #sets.phase = 'test'
     validate_dataset = CbctOnTheFlyDataset(sets.val_list, sets)
+
+    #sets.phase = 'train'
     train_dataloader = DataLoader(training_dataset, drop_last=True, batch_size=sets.batch_size, shuffle=True, num_workers=sets.num_workers, pin_memory=sets.pin_memory)
     validate_dataloader = DataLoader(validate_dataset, drop_last=False, batch_size=1, shuffle=False, num_workers=sets.num_workers, pin_memory=sets.pin_memory)
 

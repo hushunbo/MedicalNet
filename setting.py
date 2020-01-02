@@ -97,7 +97,7 @@ def parse_opts():
     parser.add_argument(
         '--gpu_id',
         nargs='+',
-        type=int,              
+        type=int,
         help='Gpu id lists')
     parser.add_argument(
         '--model',
@@ -120,19 +120,20 @@ def parse_opts():
         '--ci_test', action='store_true', help='If true, ci testing is used.')
     args = parser.parse_args()
 
-    now = datetime.datetime.now()
-    # distinct time stamp for each model
-    time = "{:04d}{:02d}{:02d}-{:02d}{:02d}{:02d}".format(now.year,
-                                                          now.month,
-                                                          now.day,
-                                                          now.hour,
-                                                          now.minute,
-                                                          now.second)
+    if not args.resume_path:
+        now = datetime.datetime.now()
+        # distinct time stamp for each model
+        time = "{:04d}{:02d}{:02d}-{:02d}{:02d}{:02d}".format(now.year,
+                                                            now.month,
+                                                            now.day,
+                                                            now.hour,
+                                                            now.minute,
+                                                            now.second)
+    else:
+        time = args.resume_path.split("{}_{}_".format(args.model, args.model_depth))[1][0:15]
 
+    print(time)
     args.save_folder = "./trails/models/{}_{}_{}".format(args.model, args.model_depth, time)
     args.log_folder = "./trails/logs/{}_{}_{}".format(args.model, args.model_depth, time)
 
-    os.system('mkdir {}'.format(args.save_folder))
-    os.system('cp {} {}'.format(args.train_list, args.save_folder))
-    os.system('cp {} {}'.format(args.val_list, args.save_folder))
     return args

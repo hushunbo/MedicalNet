@@ -33,6 +33,7 @@ from utils.loss import seg_eval
 
 def test(data_loader, model, img_names, sets):
     masks = []
+    probs = []
     model.eval() # for testing 
     for batch_id, batch_data in enumerate(data_loader):
         # forward
@@ -40,25 +41,24 @@ def test(data_loader, model, img_names, sets):
         if not sets.no_cuda:
             volume = volume.cuda()
         with torch.no_grad():
-            probs = model(volume)
-            probs = F.softmax(probs, dim=1)
+            prob = model(volume)
+            prob = F.softmax(prob, dim=1)
 
         # resize mask to original size
-        [batchsize, _, mask_d, mask_h, mask_w] = probs.shape
-        # data = nib.load(img_names[batch_id])
+        [batchsize, _, mask_d, mask_h, mask_w] = prob.shape
         data = sitk.ReadImage(img_names[batch_id])
         print("processing image {}".format(img_names[batch_id]))
-        # data = data.get_data()
         data = sitk.GetArrayFromImage(data)
         [depth, height, width] = data.shape
-        mask = probs[0]
+        prob = prob[0]
         scale = [1, depth*1.0/mask_d, height*1.0/mask_h, width*1.0/mask_w]
-        mask = ndimage.interpolation.zoom(mask.cpu().numpy(), scale, order=1)
-        mask = np.argmax(mask, axis=0)
+        prob = ndimage.interpolation.zoom(prob.cpu().numpy(), scale, order=1)
+        mask = np.argmax(prob, axis=0)
 
         masks.append(mask)
+        probs.append(prob)
  
-    return masks
+    return masks, probs
 
 
 if __name__ == '__main__':
@@ -78,22 +78,38 @@ if __name__ == '__main__':
 
     # testing
     img_names = [info.split(" ")[0] for info in load_lines(sets.val_list)]
-    masks = test(data_loader, net, img_names, sets)
+    masks, probs = test(data_loader, net, img_names, sets)
     
     # calculate dice
     label_names = [info.split(" ")[1] for info in load_lines(sets.val_list)]
     Nimg = len(label_names)
     dices = np.zeros([Nimg, sets.n_seg_classes])
     for idx in range(Nimg):
-        #label = nib.load(label_names[idx])
-        #label = label.get_data()
-        label = sitk.ReadImage(label_names[idx])
-        label = sitk.GetArrayFromImage(label)
+        label_itk = sitk.ReadImage(label_names[idx])
+        label_arr = sitk.GetArrayFromImage(label_itk)
+
+        image_file = os.path.join(sets.save_folder, 'image_{}.nii.gz'.format(idx))
+        label_file = os.path.join(sets.save_folder, 'label_{}.nii.gz'.format(idx))
+        os.system('cp {} {}'.format(img_names[idx], image_file))
+        os.system('cp {} {}'.format(label_names[idx], label_file))
         print("evaluating image {}".format(idx))
-        dices[idx, :] = seg_eval(masks[idx], label, range(sets.n_seg_classes))
-        #dices[idx, :] = binary_seg_eval(masks[idx], label)
+        mask_arr = masks[idx]
+        prob_arr = probs[idx]
+        dices[idx, :] = seg_eval(mask_arr, label_arr, range(sets.n_seg_classes))
         print(dices[idx, :])
-    
+        mask_itk = sitk.GetImageFromArray(mask_arr.astype(np.uint8))
+        mask_itk.CopyInformation(label_itk)
+        mask_file = os.path.join(sets.save_folder, 'mask_{}.nii.gz'.format(idx))
+        sitk.WriteImage(mask_itk, mask_file)
+
+        C = prob_arr.shape[0]
+        for c in range(C):
+            prob_c_arr = prob_arr[c, ...]
+            prob_c_itk = sitk.GetImageFromArray(prob_c_arr)
+            prob_c_itk.CopyInformation(label_itk)
+            prob_c_file = os.path.join(sets.save_folder, 'prob_{}_{}.nii.gz'.format(c, idx))
+            sitk.WriteImage(prob_c_itk, prob_c_file)
+
     # print result
     for idx in range(0, sets.n_seg_classes):
         mean_dice_per_task = np.mean(dices[:, idx])

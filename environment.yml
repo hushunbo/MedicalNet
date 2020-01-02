@@ -77,6 +77,5 @@ dependencies:
     - scipy==1.1.0
     - simpleitk==1.2.4
     - tensorboardx==1.9
-    - torch==0.4.1.post2
 prefix: /home/xhs400/anaconda3/envs/medicalnet
 
